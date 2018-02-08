@@ -1,0 +1,32 @@
+jobs:
+- name: unit
+  plan:
+  - get: source-code
+    trigger: true
+  - task: unit
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: node
+          tag: 8-alpine
+      inputs:
+      - name: source-code
+      caches:
+      - path: source-code/node_modules
+      run:
+        path: sh
+        dir: source-code
+        args:
+        - -exc
+        - |
+          yarn install
+          yarn run test
+
+resources:
+- name: source-code
+  type: git
+  source:
+    uri: ssh://git@git.anyting.io:10022/tim/cheap-ingress.git
+    private_key: ((git-key))

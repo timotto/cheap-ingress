@@ -1,0 +1,8 @@
+.idea/
+dist/
+*.iml
+node_modules/
+secrets.yml
+.env
+coverage/
+.nyc_output

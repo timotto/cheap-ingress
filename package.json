@@ -1,0 +1,33 @@
+{
+  "scripts": {
+    "tsc": "tsc",
+    "tsserver": "tsserver",
+    "eslint": "eslint",
+    "cleanstart": "rm -rf dist && tsc && node dist",
+    "start": "tsc && node dist",
+    "tests": "nodemon -w src --ext ts --exec yarn run test",
+    "test": "nyc -r lcov -e .ts -x \"**/*.spec.ts\" jasmine-ts --config=jasmine.json",
+    "coverage": "nyc report --reporter=text-lcov | coveralls",
+    "dev": "nodemon -w src --ext ts --exec yarn run start"
+  },
+  "devDependencies": {
+    "@types/express": "^4.11.0",
+    "@types/jasmine": "^2.6.0",
+    "coveralls": "^3.0.0",
+    "jasmine": "^2.8.0",
+    "jasmine-spec-reporter": "^4.2.1",
+    "jasmine-ts": "^0.2.1",
+    "nodemon": "^1.12.1",
+    "nyc": "^11.4.1",
+    "typemoq": "^2.0.1",
+    "typescript": "^2.5.2",
+    "typescript-eslint-parser": "^8.0.0",
+    "yarn": "^1.1.0"
+  },
+  "dependencies": {
+    "dnsd": "^0.9.6",
+    "express": "^4.16.2",
+    "morgan": "^1.9.0"
+  },
+  "license": "Apache-2.0"
+}
