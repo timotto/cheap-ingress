@@ -1,4 +1,5 @@
 import * as debugLog from 'debug';
+import * as fs from "fs";
 
 const debug = debugLog('util');
 
@@ -14,4 +15,25 @@ export class Util {
 
         return value;
     }
+
+    public static writeFilePromise(filename: string, content: string): Promise<void> {
+        return new Promise(((resolve, reject) =>
+            fs.writeFile(filename, content, err =>
+                err ? reject(err) : resolve())));
+    }
+
+    public static readFilePromise(filename: string): Promise<string> {
+        return new Promise(((resolve, reject) =>
+            fs.readFile(filename, 'utf-8', (err,data) =>
+                err ? reject(err) : resolve(data))));
+    }
+
+    public static pserial<T>(promiseMakerFunctions: ((T) => Promise<T>)[]): Promise<T> {
+
+        const chainFunction = (p: Promise<T>, fn: (T) => Promise<T>) => p.then(fn);
+
+        return promiseMakerFunctions.reduce(chainFunction, Promise.resolve(undefined));
+    }
+
+
 }

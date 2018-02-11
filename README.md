@@ -32,6 +32,8 @@ There is no integration into Kubernetes yet but it's obviously the point of this
 
 All configuration parameters have to be supplied as environment variables:
 
+- ```STATE_FILENAME``` location of the file to store configured routes in - default: ```state.json```
+- ```PORT``` port for the API server to listen on - default: ```8080``` 
 - ```NODES``` list of IPs of nodes to send traffic to - default: ```169.254.123.125 169.254.123.126 169.254.123.127``` 
 - ```INTERFACE``` network interface to use for the virtual IPs - default: ```eth0```
 - ```IPPOOL_PREFIX``` static part of the IP pool to use for the virtual IPs, pattern has to match ```AAA.BBB.CCC.``` - 
@@ -39,6 +41,7 @@ default: ```169.254.123.```
 - ```IPPOOL_HOSTMIN``` lower boundary of the IP pool - default ```100```
 - ```IPPOOL_HOSTMAX``` upper boundary of the IP pool - default ```200```
 - ```DOMAIN``` DNS domain of the built-in DNS server - default ```cheap-ingress.local```
+- ```DNS_PORT``` port for the built-in DNS server to listen on - default ```53```
 - ```DEBUG``` names of modules to show debug output from:
     - util
     - cheap-ingress:*
@@ -51,7 +54,7 @@ Given:
 - DNS in my home network forwards requests for ```*.cloud.home``` to ```192.168.0.11```
 - the Raspberry Pi Kubernetes cluster is running on ```192.168.1.20``` - ```192.168.1.25``` 
 - the "futhek" service running on the Kubernetes cluster is exposed to nodePort ```32412```
-- cheap-ingress is running on a VM bridged to ```192.168.0.11```
+- cheap-ingress is running inside a Docker container started with ```--privileged --network=host``` on a host with the IP ```192.168.0.11```
 - configuration environment of cheap-ingress is
     ```
     NODES="192.168.1.20 192.168.1.21 192.168.1.22"
@@ -60,6 +63,7 @@ Given:
     IPPOOL_HOSTMIN=100
     IPPOOL_HOSTMAX=199
     DOMAIN=cloud.home
+    PORT=80
     DEBUG=cheap-ingress:*
     ```
 - I have [httpie](https://github.com/jakubroztocil/httpie) on my local machine
