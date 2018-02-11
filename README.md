@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/timotto/cheap-ingress.svg?branch=master)](https://travis-ci.org/timotto/cheap-ingress)
 [![Coverage Status](https://coveralls.io/repos/github/timotto/cheap-ingress/badge.svg?branch=master)](https://coveralls.io/github/timotto/cheap-ingress?branch=master)
+[![Dependency Status](https://david-dm.org/timotto/cheap-ingress.svg)](https://david-dm.org/timotto/cheap-ingress)
+[![devDependency Status](https://david-dm.org/timotto/cheap-ingress/dev-status.svg)](https://david-dm.org/timotto/cheap-ingress#info=devDependencies)
 
 This project is in hot development. Everything might change, most of it is still difficult to use.
 
