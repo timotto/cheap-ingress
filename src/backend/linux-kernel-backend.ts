@@ -5,6 +5,7 @@ import {NodeService} from "./node-service";
 import {exec} from "child_process";
 import {DnsServer} from "./dns-server";
 import {Util} from "../util";
+import * as fs from 'fs';
 
 class CmdResult { constructor(readonly stdout: string, readonly stderr: string) {} }
 
@@ -12,6 +13,11 @@ const syncAsyncExec = (cmd): Promise<CmdResult> => new Promise(((resolve, reject
     if (error) return reject(error);
     return resolve(new CmdResult(stdout, stderr));
 }))));
+
+const writeFilePromise = (filename: string, content: string): Promise<void> =>
+    new Promise(((resolve, reject) =>
+        fs.writeFile(filename, content, err =>
+            err !== undefined ? reject(err) : resolve())));
 
 export class LinuxKernelBackend implements CheapBackend {
 
@@ -30,7 +36,8 @@ export class LinuxKernelBackend implements CheapBackend {
     }
 
     start(): Promise<CheapBackend> {
-        return this.nodeService.start()
+        return writeFilePromise('/proc/sys/net/ipv4/ip_forward', '1')
+            .then(() => this.nodeService.start())
             .then(() => this.dnsServer.start())
             .then(() => syncAsyncExec('iptables -t nat -A POSTROUTING -j MASQUERADE'))
             .then(() => this);
