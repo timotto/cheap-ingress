@@ -36,7 +36,7 @@ export class DnsService {
 
                         const dnsEntry = new DnsEntry(ip, allocatedHostname);
                         this.dnsRecords[allocatedHostname] = dnsEntry;
-                        debug(`allocated ${dnsEntry.hostname} to ${dnsEntry.ip.ip}`);
+                        debug(`allocated ${dnsEntry.fqdn} to ${dnsEntry.ip.ip}`);
                         return dnsEntry;
                     });
             });
@@ -47,18 +47,18 @@ export class DnsService {
     }
 
     public release(dnsEntry: DnsEntry): Promise<void> {
-        if(this.dnsRecords[dnsEntry.hostname] === undefined) return Promise.reject(`hostname ${dnsEntry.hostname} is not allocated`);
+        if(this.dnsRecords[dnsEntry.fqdn] === undefined) return Promise.reject(`hostname ${dnsEntry.fqdn} is not allocated`);
 
-        return this.backend.disassociateIp(dnsEntry.ip.ip, dnsEntry.hostname)
+        return this.backend.disassociateIp(dnsEntry.ip.ip, dnsEntry.fqdn)
             .then(() => {
-                delete this.dnsRecords[dnsEntry.hostname];
-                debug(`released ${dnsEntry.hostname} to ${dnsEntry.ip.ip}`);})
+                delete this.dnsRecords[dnsEntry.fqdn];
+                debug(`released ${dnsEntry.fqdn} to ${dnsEntry.ip.ip}`);})
             .then(() => this.ipService.release(dnsEntry.ip));
     }
 }
 
 export class DnsEntry {
     constructor(public ip: CheapIp,
-                public hostname: string) {
+                public fqdn: string) {
     }
 }

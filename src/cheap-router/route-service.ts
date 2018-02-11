@@ -22,7 +22,7 @@ export class RouteService {
         return Promise.all(Object.keys(this.routes)
             .map(key => this.routes[key])
             .map((route: CheapRoute) =>
-                this.release(route.nodePort, route.target.dnsEntry.hostname, route.target.protocol, route.target.port)))
+                this.release(route.nodePort, route.target.dnsEntry.fqdn, route.target.protocol, route.target.port)))
             .then(() => undefined);
     }
 
@@ -34,7 +34,7 @@ export class RouteService {
                 return dnsEntry;
             })
             .then(dnsEntry => {
-                const target = `${dnsEntry.hostname}:${port}/${protocol}`;
+                const target = `${dnsEntry.fqdn}:${port}/${protocol}`;
                 if (this.routes[target] !== undefined) throw new Error(`route ${target} is already in use`);
 
                 const cheapTarget = new CheapTarget(dnsEntry, protocol, port);
