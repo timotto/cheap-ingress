@@ -2,7 +2,7 @@ import {Router} from 'express';
 import {RouteService} from "../cheap-router/route-service";
 import {DnsService} from "../cheap-router/dns-service";
 import {IpService} from "../cheap-router/ip-service";
-import {CheapBackend} from "../backend/index";
+import {CheapBackend} from "../backend";
 
 import * as debugModule from 'debug';
 import {LinuxKernelBackend} from "../backend/linux-kernel-backend";

@@ -35,6 +35,7 @@ export class DnsService {
                     .then(allocatedHostname => {
 
                         const dnsEntry = new DnsEntry(ip, allocatedHostname);
+                        dnsEntry.hostname = hostname;
                         this.dnsRecords[allocatedHostname] = dnsEntry;
                         debug(`allocated ${dnsEntry.fqdn} to ${dnsEntry.ip.ip}`);
                         return dnsEntry;
@@ -58,7 +59,9 @@ export class DnsService {
 }
 
 export class DnsEntry {
+    public hostname: string;
     constructor(public ip: CheapIp,
                 public fqdn: string) {
+        this.hostname = fqdn.split('.')[0];
     }
 }

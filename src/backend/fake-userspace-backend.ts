@@ -4,6 +4,8 @@ import {CheapIpPool} from "../cheap-router/ip-service";
 import {NodeService} from "./node-service";
 
 import * as debugLog from 'debug';
+import {DnsServer} from "./dns-server";
+import {Util} from "../util";
 const debug = debugLog('cheap-ingress:fake-userspace-backend');
 
 export class FakeUserspaceBackend implements CheapBackend {
@@ -12,16 +14,21 @@ export class FakeUserspaceBackend implements CheapBackend {
 
     private nodeService: NodeService = new NodeService();
     private ipPool: CheapIpPool = new CheapIpPool('127.0.1.', 10, 20);
+    private dnsServer: DnsServer = new DnsServer(
+        Util.envOrDefault('DOMAIN', 'cheap-ingress.local'),
+        parseInt(Util.envOrDefault('DNS_PORT', '53')));
 
     start(): Promise<CheapBackend> {
         debug('starting');
         return this.nodeService.start()
+            .then(() => this.dnsServer.start())
             .then(() => this);
     }
 
     shutdown(): Promise<void> {
         debug('shutting down');
-        return this.nodeService.shutdown();
+        return this.dnsServer.shutdown()
+            .then(() => this.nodeService.shutdown());
     }
 
     getIpPool(): Promise<CheapIpPool> {
@@ -37,10 +44,11 @@ export class FakeUserspaceBackend implements CheapBackend {
     }
 
     associateIp(ip: string, hostname: string): Promise<any> {
-        return Promise.resolve();
+        return Promise.resolve(this.dnsServer.addRecord(hostname, ip));
     }
 
     disassociateIp(ip: string, hostname: string): Promise<any> {
+        this.dnsServer.removeRecord(hostname, ip);
         return Promise.resolve();
     }
 

@@ -34,7 +34,7 @@ export class RouteService {
                 return dnsEntry;
             })
             .then(dnsEntry => {
-                const target = `${dnsEntry.fqdn}:${port}/${protocol}`;
+                const target = `${hostname}:${port}/${protocol}`;
                 if (this.routes[target] !== undefined) throw new Error(`route ${target} is already in use`);
 
                 const cheapTarget = new CheapTarget(dnsEntry, protocol, port);
