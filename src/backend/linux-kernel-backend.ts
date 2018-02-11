@@ -22,7 +22,7 @@ const writeFilePromise = (filename: string, content: string): Promise<void> =>
 export class LinuxKernelBackend implements CheapBackend {
 
     private nodeService: NodeService = new NodeService();
-    private dnsServer: DnsServer = new DnsServer(Util.envOrDefault('DOMAIN', 'cheap-ingress.local'));
+    private dnsServer: DnsServer = new DnsServer(Util.envOrDefault('DOMAIN', 'cheap-ingress.local'), 53);
     private ipPool: CheapIpPool;
 
     private interfaceName: string;

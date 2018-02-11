@@ -10,7 +10,7 @@ export class DnsServer {
     private records = {};
 
     constructor(private domain: string,
-                private port: number = 53) {}
+                private port: number) {}
 
     public start(): Promise<void> {
         return new Promise((resolve, reject) => {
@@ -42,13 +42,36 @@ export class DnsServer {
 
     private resolveDns(req, res) {
         const q = req.question[0];
-        const name = q.name.charAt(q.name.length-1) === '.'
-            ?`${q.name}${this.domain}`
-            :q.name;
-        debug(`query type ${q.type} for ${name} (${q.name})`);
-        if (q.type === 'A' && this.records[name] !== undefined) {
-            res.answer.push({name:q.name, type:'A', data:this.records[name], 'ttl': 1})
+        const dotEndQuery = q.name.endsWith('.');
+
+        const qName = dotEndQuery
+            ? q.name.substr(0, q.name.length - 1)
+            : q.name;
+        const fqdnQuery = qName.indexOf('.') !== -1;
+
+        const qNames = fqdnQuery
+            ? [qName]
+            : [qName, `${qName}.${this.domain}`];
+
+        const hits = Object.keys(this.records)
+            .filter(key => qNames.filter(qName => qName === key).length > 0);
+
+        debug(`query type ${q.type} for ${q.name}: dotEndQuery=${dotEndQuery} qName=${qName} fqdnQuery=${fqdnQuery} qNames=${qNames.join(',')} hits=${hits.join(',')}`);
+
+        if (hits.length === 0) {
+            res.end();
+            return;
         }
+
+        const answers = hits.map(hit => ({
+            type: 'A',
+            ttl: 1,
+            data: this.records[hit],
+            name: dotEndQuery
+                ? qName
+                : hit
+        }));
+        res.answer.push(...answers);
         res.end();
     }
 }
