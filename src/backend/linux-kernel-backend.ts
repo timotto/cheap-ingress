@@ -33,6 +33,8 @@ export class LinuxKernelBackend implements CheapBackend {
 
     start(): Promise<CheapBackend> {
         return Util.writeFilePromise('/proc/sys/net/ipv4/ip_forward', '1')
+            .then(() => syncAsyncExec(`iptables -A FORWARD -i ${this.interfaceName} -j ACCEPT`))
+            .then(() => syncAsyncExec(`iptables -A FORWARD -o ${this.interfaceName} -j ACCEPT`))
             .then(() => this.nodeService.start())
             .then(() => this.dnsServer.start())
             .then(() => syncAsyncExec('iptables -t nat -A POSTROUTING -j MASQUERADE'))
@@ -41,6 +43,8 @@ export class LinuxKernelBackend implements CheapBackend {
 
     shutdown(): Promise<void> {
         return syncAsyncExec('iptables -t nat -D POSTROUTING -j MASQUERADE')
+            .then(() => syncAsyncExec(`iptables -D FORWARD -i ${this.interfaceName} -j ACCEPT`))
+            .then(() => syncAsyncExec(`iptables -D FORWARD -o ${this.interfaceName} -j ACCEPT`))
             .then(() => this.dnsServer.shutdown())
             .then(() => this.nodeService.shutdown());
     }
