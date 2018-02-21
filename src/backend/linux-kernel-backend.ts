@@ -2,19 +2,14 @@ import {CheapBackend} from "./index";
 import {CheapIpPool} from "../cheap-router/ip-service";
 import {NodeService} from "./node-service";
 
-import {exec} from "child_process";
 import {DnsServer} from "./dns-server";
 import {Util} from "../util";
-
-class CmdResult { constructor(readonly stdout: string, readonly stderr: string) {} }
-
-const syncAsyncExec = (cmd): Promise<CmdResult> => new Promise(((resolve, reject) => exec(cmd, ((error, stdout, stderr) => {
-    if (error) return reject(error);
-    return resolve(new CmdResult(stdout, stderr));
-}))));
+import {IpTables, IpTablesRule} from "./ip-tables";
+import {IpRoute2} from "./ip-route2";
 
 export class LinuxKernelBackend implements CheapBackend {
 
+    private staticRules: IpTablesRule[];
     private nodeService: NodeService = new NodeService();
     private dnsServer: DnsServer = new DnsServer(
         Util.envOrDefault('DOMAIN', 'cheap-ingress.local'),
@@ -29,22 +24,24 @@ export class LinuxKernelBackend implements CheapBackend {
             Util.envOrDefault('IPPOOL_PREFIX', '169.254.123.'),
             parseInt(Util.envOrDefault('IPPOOL_HOSTMIN', '100')),
             parseInt(Util.envOrDefault('IPPOOL_HOSTMAX', '200')));
+
+        this.staticRules = [
+            {table: 'filter', chain: 'FORWARD', spec: `-i ${this.interfaceName} -j ACCEPT`},
+            {table: 'filter', chain: 'FORWARD', spec: `-o ${this.interfaceName} -j ACCEPT`},
+            {table: 'nat', chain: 'POSTROUTING', spec: '-j MASQUERADE'},
+        ];
     }
 
     start(): Promise<CheapBackend> {
         return Util.writeFilePromise('/proc/sys/net/ipv4/ip_forward', '1')
-            .then(() => syncAsyncExec(`iptables -A FORWARD -i ${this.interfaceName} -j ACCEPT`))
-            .then(() => syncAsyncExec(`iptables -A FORWARD -o ${this.interfaceName} -j ACCEPT`))
             .then(() => this.nodeService.start())
             .then(() => this.dnsServer.start())
-            .then(() => syncAsyncExec('iptables -t nat -A POSTROUTING -j MASQUERADE'))
+            .then(() => Promise.all(this.staticRules.map(rule => IpTables.add(rule))))
             .then(() => this);
     }
 
     shutdown(): Promise<void> {
-        return syncAsyncExec('iptables -t nat -D POSTROUTING -j MASQUERADE')
-            .then(() => syncAsyncExec(`iptables -D FORWARD -i ${this.interfaceName} -j ACCEPT`))
-            .then(() => syncAsyncExec(`iptables -D FORWARD -o ${this.interfaceName} -j ACCEPT`))
+        return Promise.all(this.staticRules.map(rule => IpTables.delete(rule)))
             .then(() => this.dnsServer.shutdown())
             .then(() => this.nodeService.shutdown());
     }
@@ -54,11 +51,11 @@ export class LinuxKernelBackend implements CheapBackend {
     }
 
     allocateIp(ip: string): Promise<any> {
-        return syncAsyncExec(`ip addr add ${ip}/${this.ipPool.networkSize} dev ${this.interfaceName}`);
+        return IpRoute2.Addr.add(ip, this.ipPool.networkSize, this.interfaceName);
     }
 
     releaseIp(ip: string): Promise<any> {
-        return syncAsyncExec(`ip addr del ${ip}/${this.ipPool.networkSize} dev ${this.interfaceName}`);
+        return IpRoute2.Addr.del(ip, this.ipPool.networkSize, this.interfaceName);
     }
 
     associateIp(ip: string, hostname: string): Promise<string> {
@@ -71,20 +68,32 @@ export class LinuxKernelBackend implements CheapBackend {
     }
 
     enableRoute(ip: string, port: number, nodePort: number, protocol: string): Promise<any> {
-        return Promise.all(this.nodeService.backends
-            .map((backend, index, all) => this.makeIpTablesRule('A', backend, index, all, ip, port, nodePort, protocol))
-            .map(syncAsyncExec));
+        return this.manipulateRoute(IpTables.add, ip, port, nodePort, protocol);
     }
 
     disableRoute(ip: string, port: number, nodePort: number, protocol: string): Promise<any> {
+        return this.manipulateRoute(IpTables.delete, ip, port, nodePort, protocol);
+    }
+
+    manipulateRoute(cmd: (rule: IpTablesRule) => Promise<any>,
+                    ip: string, port: number, nodePort: number, protocol: string): Promise<any> {
         return Promise.all(this.nodeService.backends
-            .map((backend, index, all) => this.makeIpTablesRule('D', backend, index, all, ip, port, nodePort, protocol))
-            .map(syncAsyncExec));
+            .map((backend, index, all) =>
+                cmd(LinuxKernelBackend.makeForwardingRule(
+                    backend, index, all, ip, port, nodePort, protocol))));
     }
 
-    private makeIpTablesRule(command: string, backend: string, index: number, all: string[], ip: string, port: number, nodePort: number, protocol: string): string {
-        const filter = index===all.length-1?'':`-m statistic --mode nth --every ${all.length - index} --packet 1 `;
-        return `iptables -t nat -${command} PREROUTING -p ${protocol} -d ${ip} --dport ${port} -m state --state NEW ${filter} -j DNAT --to-destination ${backend}:${nodePort}`;
-    }
+    private static makeForwardingRule(backend: string, index: number, all: string[], ip: string, port: number, nodePort: number, protocol: string): IpTablesRule {
+        const filter = index === all.length-1
+            ?''
+            :`-m statistic --mode nth --every ${all.length - index} --packet 1 `;
 
+        const spec = `-p ${protocol} -d ${ip} --dport ${port} -m state --state NEW ${filter} -j DNAT --to-destination ${backend}:${nodePort}`;
+
+        return {
+            table: 'nat',
+            chain: 'PREROUTING',
+            spec: spec
+        };
+    }
 }
