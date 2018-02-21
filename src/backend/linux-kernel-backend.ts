@@ -34,16 +34,20 @@ export class LinuxKernelBackend implements CheapBackend {
 
     start(): Promise<CheapBackend> {
         return Util.writeFilePromise('/proc/sys/net/ipv4/ip_forward', '1')
+            .then(() => this.manipulateStaticRules(IpTables.add))
             .then(() => this.nodeService.start())
             .then(() => this.dnsServer.start())
-            .then(() => Promise.all(this.staticRules.map(rule => IpTables.add(rule))))
             .then(() => this);
     }
 
     shutdown(): Promise<void> {
-        return Promise.all(this.staticRules.map(rule => IpTables.delete(rule)))
+        return this.manipulateStaticRules(IpTables.delete)
             .then(() => this.dnsServer.shutdown())
             .then(() => this.nodeService.shutdown());
+    }
+
+    manipulateStaticRules(cmd: (IpTablesRule) => Promise<any>): Promise<any> {
+        return Promise.all(this.staticRules.map(rule => cmd(rule)));
     }
 
     getIpPool(): Promise<CheapIpPool> {
