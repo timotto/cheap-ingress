@@ -28,30 +28,31 @@ describe('DnsServer', () => {
             await unitUnderTest.shutdown();
         });
         describe('addRecord', () => {
-            it('adds the hostname with the domain to the in-memory database', () => {
+            it('does not add the hostname with the domain to the in-memory database', () => {
                 // given
 
                 // when
                 unitUnderTest.addRecord(givenHostname, givenIp);
 
                 // then
-                expect((unitUnderTest as any).records[`${givenHostname}.${dnsDomain}`]).toBeDefined();
+                expect((unitUnderTest as any).records[givenHostname]).toBeDefined();
+                expect((unitUnderTest as any).records[`${givenHostname}.${dnsDomain}`]).not.toBeDefined();
             });
 
-            it('appends the domain if the hostname does not have it', () => {
+            it('does not append the domain if the hostname does not have it', () => {
                 const hostname = 'hostname';
                 const ip = '1.2.3.4';
-                const expectedDomain = `${hostname}.${dnsDomain}`;
 
                 const actualDomain = unitUnderTest.addRecord(hostname, ip);
-                expect(actualDomain).toBe(expectedDomain);
+                expect(actualDomain).toBe(hostname);
             });
 
-            it('does not append the domain if the hostname already has it', () => {
+            it('strips the domain if the hostname already has it', () => {
                 const ip = '1.2.3.4';
-                const expectedDomain = `expected.${dnsDomain}`;
+                const expectedDomain = 'expected';
+                const givenDomain = `${expectedDomain}.${dnsDomain}`;
 
-                const actualDomain = unitUnderTest.addRecord(expectedDomain, ip);
+                const actualDomain = unitUnderTest.addRecord(givenDomain, ip);
                 expect(actualDomain).toBe(expectedDomain);
             });
         });
@@ -65,7 +66,17 @@ describe('DnsServer', () => {
                 unitUnderTest.removeRecord(givenHostname, givenIp);
 
                 // then
-                expect((unitUnderTest as any).records[`${givenHostname}.${dnsDomain}`]).not.toBeDefined();
+                expect((unitUnderTest as any).records[givenHostname]).not.toBeDefined();
+            });
+            it('removes the entry for the given FQDN hostname', () => {
+                // given
+                unitUnderTest.addRecord(givenHostname, givenIp);
+
+                // when
+                unitUnderTest.removeRecord(`${givenHostname}.${dnsDomain}`, givenIp);
+
+                // then
+                expect((unitUnderTest as any).records[givenHostname]).not.toBeDefined();
             });
         });
 

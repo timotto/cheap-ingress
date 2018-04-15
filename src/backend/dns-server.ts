@@ -26,18 +26,18 @@ export class DnsServer {
     }
 
     public addRecord(hostname: string, ip: string): string {
-        const name = (
-            hostname.length > ( 2 + this.domain.length )
-            && hostname.lastIndexOf(`.${this.domain}`)
-            === hostname.length - 1 - this.domain.length)
-            ? hostname
-            : `${hostname}.${this.domain}`;
+        const name = hostname.length > (2 + this.domain.length) && hostname.endsWith(`.${this.domain}`)
+            ? hostname.substr(0, hostname.length - this.domain.length - 1)
+            : hostname;
         this.records[name] = ip;
         return name;
     }
 
     public removeRecord(hostname: string, ip: string) {
-        delete this.records[`${hostname}.${this.domain}`];
+        const name = hostname.length > (2 + this.domain.length) && hostname.endsWith(`.${this.domain}`)
+            ? hostname.substr(0, hostname.length - this.domain.length - 1)
+            : hostname;
+        delete this.records[name];
     }
 
     private resolveDns(req, res) {
@@ -54,7 +54,7 @@ export class DnsServer {
             : [qName, `${qName}.${this.domain}`];
 
         const hits = Object.keys(this.records)
-            .filter(key => qNames.filter(qName => qName === key).length > 0);
+            .filter(key => qNames.filter(qName => qName === `${key}.${this.domain}`).length > 0);
 
         debug(`query type ${q.type} for ${q.name}: dotEndQuery=${dotEndQuery} qName=${qName} fqdnQuery=${fqdnQuery} qNames=${qNames.join(',')} hits=${hits.join(',')}`);
 
@@ -69,7 +69,7 @@ export class DnsServer {
             data: this.records[hit],
             name: dotEndQuery
                 ? qName
-                : hit
+                : `${hit}.${this.domain}`
         }));
         res.answer.push(...answers);
         res.end();
